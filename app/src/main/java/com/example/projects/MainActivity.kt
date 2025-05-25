@@ -57,10 +57,77 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.delay
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.ViewModel
+import com.google.firebase.database.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+
+
+class MainViewModel : ViewModel() {
+
+    private val database = FirebaseDatabase.getInstance()
+    private val humidityRef = database.getReference("Sensor/humidity")
+    private val percentSoilSensorDataRef = database.getReference("Sensor/percent_soil_sensor_data")
+    private val rawSoilSensorDataRef = database.getReference("Sensor/raw_soil_sensor_data")
+    private val temperatureRef = database.getReference("Sensor/temperature")
+
+    var humidity = mutableStateOf(0.0)
+        private set
+
+    var percentSoil = mutableStateOf(0.0)
+        private set
+
+    var rawSoil = mutableStateOf(0.0)
+        private set
+
+    var temperature = mutableStateOf(0.0)
+        private set
+
+    init {
+        humidityRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                humidity.value = snapshot.getValue(Double::class.java) ?: 0.0
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        percentSoilSensorDataRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                percentSoil.value = snapshot.getValue(Double::class.java) ?: 0.0
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        rawSoilSensorDataRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                rawSoil.value = snapshot.getValue(Double::class.java) ?: 0.0
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        temperatureRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                temperature.value = snapshot.getValue(Double::class.java) ?: 0.0
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+}
+
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         setContent {
             ProjectsTheme {
@@ -76,22 +143,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainLayout(modifier: Modifier = Modifier) {
+fun MainLayout(
+    viewModel: MainViewModel = viewModel(), modifier: Modifier = Modifier) {
 
-//  Currently still using a dummy data
-//  to use an actual data, make variable for each Indicator and then passed it to the function
-    val dummyValue = remember { mutableIntStateOf(1500) }
-    val percentageDummy = remember { mutableIntStateOf(-1) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            // Update both values in the same coroutine
-            dummyValue.intValue = (1500..4095).random()
-            percentageDummy.intValue = (-1..100).random()  // Fixed range and target variable
-            delay(2000)  // Increased delay for smoother updates
-        }
-    }
-
+    // Ambil state dari ViewModel
+    val humidity by viewModel.humidity
+    val percentSoil by viewModel.percentSoil
+    val rawSoil by viewModel.rawSoil
+    val temperature by viewModel.temperature
 
     LazyColumn(
         modifier = modifier
@@ -110,16 +169,16 @@ fun MainLayout(modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif
                 )
-//              pass the value here on the first parameter
-                2 -> MainIndicator(percentageDummy.intValue,modifier)
-                3 -> RawSoilIndicator(dummyValue.intValue, modifier)
-                4 -> SoilMoistIndicator(percentageDummy.intValue, modifier)
-                5 -> MoistIndicator(percentageDummy.intValue, modifier)
-                6 -> FirstTemperatureIndicator(percentageDummy.intValue, modifier)
+                2 -> MainIndicator(percentSoil.toInt(), Modifier)
+                3 -> RawSoilIndicator(rawSoil.toInt(), Modifier)
+                4 -> SoilMoistIndicator(percentSoil.toInt(), Modifier)
+                5 -> MoistIndicator(humidity.toInt(), Modifier)
+                6 -> FirstTemperatureIndicator(temperature.toInt(), Modifier)
             }
         }
     }
 }
+
 
 
 @Composable

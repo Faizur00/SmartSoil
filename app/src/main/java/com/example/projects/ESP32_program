@@ -1,0 +1,80 @@
+#include <WiFi.h>                 // wifi & firebase setup
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
+
+#include <Adafruit_Sensor.h> // dht 11 setup
+#include <DHT.h>
+#include <DHT_U.h>
+#define DHTPIN 4         // dht 11 on pin 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+#define WIFI_SSID "3RTV"
+#define WIFI_PASSWORD "vv110668"
+#define API_KEY "AIzaSyAuxXEBQKiWP9zLghXtqCZaYZl94KbhfOw"
+#define DATABASE_URL "https://rhiza-project-default-rtdb.asia-southeast1.firebasedatabase.app/"
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+unsigned long sendDataPrevMillis = 0;
+bool signupOK = false;
+
+const int soilMoisturePin = 34; // Soil sensor on pin 34 (harus pin tipe ADC1 karena ADC2 tidak dapat mengirim saat WiFi)
+const int dryValue = 4095;
+const int wetValue = 1500;
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED){
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println();
+  Serial.print("Connected, IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+
+  if (Firebase.signUp(&config, &auth, "", "")){
+    Serial.println("signUp Ok");
+    signupOK = true;
+  } else {
+    Serial.printf("%s\n", config.signer.signupError.message.c_str());
+  }
+
+  config.token_status_callback = tokenStatusCallback;
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+
+  dht.begin(); // begin dht 11 read
+  delay(1000);
+}
+
+void loop() {
+  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0)){
+    sendDataPrevMillis = millis();
+
+    int sensorValue = analogRead(soilMoisturePin);
+    int moisturePercent = ((dryValue - sensorValue) * 100) / (dryValue - wetValue);
+
+    float temperature = dht.readTemperature();
+    float humidity = dht.readHumidity();
+
+    // Kirim data ke Firebase
+    Firebase.RTDB.setInt(&fbdo, "Sensor/raw_soil_sensor_data", sensorValue);
+    Firebase.RTDB.setInt(&fbdo, "Sensor/percent_soil_sensor_data", moisturePercent);
+    Firebase.RTDB.setInt(&fbdo, "Sensor/humidity", humidity);
+    Firebase.RTDB.setInt(&fbdo, "Sensor/temperature", temperature);
+
+    Serial.println(sensorValue);
+    delay(1000);
+  }
+}
