@@ -12,8 +12,8 @@ DHT dht(DHTPIN, DHTTYPE);
 
 #define WIFI_SSID "3RTV"
 #define WIFI_PASSWORD "vv110668"
-#define API_KEY "AIzaSyAuxXEBQKiWP9zLghXtqCZaYZl94KbhfOw"
-#define DATABASE_URL "https://rhiza-project-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define API_KEY "XXXXXXXXXXXX"
+#define DATABASE_URL "www.url.com/"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
